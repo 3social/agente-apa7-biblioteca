@@ -2,12 +2,22 @@ import streamlit as st
 import docx
 import io
 import os
+import streamlit as st
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# Cargar variables de entorno desde .env
+# Cargar .env solo para local
 load_dotenv()
-API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Buscar la clave en Streamlit Secrets O en variables de entorno
+# Nota: Streamlit Cloud prioriza st.secrets
+API_KEY = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+
+# --- VERIFICACIÓN DE SEGURIDAD ---
+if not API_KEY:
+    st.error("⚠️ Error de Configuración: No se encontró la API KEY.")
+    st.info("Si estás en Streamlit Cloud, asegúrate de haberla puesto en 'Settings > Secrets'.")
+    st.stop() # Detiene la ejecución de forma limpia
 
 # --- CONFIGURACIÓN DE UI ---
 st.set_page_config(page_title="Agente APA 7 - Biblioteca", page_icon="📚", layout="wide")
