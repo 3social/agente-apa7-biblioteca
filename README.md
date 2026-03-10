@@ -1,29 +1,43 @@
-# 📚 Agente de Revisión APA 7 - Automatización para Bibliotecas
-> Una solución inteligente para la validación de coherencia en citas y referencias académicas.
+# 📚 Agente de Revisión APA 7 - Plataforma de Biblioteca
+> **Solución Inteligente para la Validación de Coherencia y Formato Académico.**
 
-Este proyecto nace de la necesidad de optimizar la labor de revisión bibliográfica en bibliotecas universitarias. Utiliza Inteligencia Artificial (OpenAI GPT-4o-mini) para detectar discrepancias entre las citas en el texto y la lista de referencias final, asegurando el cumplimiento estricto del **Manual APA 7ma Edición**.
+Esta plataforma automatiza la revisión bibliográfica en bibliotecas universitarias, utilizando Inteligencia Artificial (**OpenAI GPT-4o-mini**) para garantizar la integridad entre las citas en el texto y la lista de referencias, cumpliendo estrictamente con el **Manual APA 7ma Edición**.
 
 ---
 
 ## ✨ Características Principales
-- **🔍 Validación de Coherencia Cruzada:** Identifica citas en el texto que no aparecen en las referencias (citas huérfanas) y fuentes listadas que nunca fueron citadas (referencias sobrantes).
-- **📝 Análisis de Formato Estructural:** Revisa automáticamente el uso de cursivas en títulos, la aplicación de la sangría francesa y el orden alfabético riguroso.
-- **📥 Generación de Reportes:** Crea un documento de retroalimentación en formato `.docx` listo para ser entregado al estudiante con sugerencias de corrección pedagógicas.
-- **🛡️ Privacidad y Seguridad:** Implementación segura mediante variables de entorno (`.env`) para proteger las credenciales de API.
+- **🔍 Validación de Coherencia Cruzada:** Detecta automáticamente citas huérfanas (en texto pero no en referencias) y fuentes sobrantes (en referencias pero no citadas).
+- **📝 Análisis de Formato Estructural:** Revisa el uso de cursivas en títulos, aplicación de sangría francesa y el orden alfabético riguroso de la bibliografía.
+- **📥 Reportes Descargables:** Genera un archivo `.docx` con retroalimentación pedagógica detallada para el estudiante.
+- **🌐 Interfaz Web Moderna:** Desplegado en la nube para un acceso fácil desde cualquier navegador, sin necesidad de instalar software adicional.
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
-- **Lenguaje:** Python 3.10+
-- **Interfaz (UI):** [Streamlit](https://streamlit.io/ )
+## 🛠️ Stack Tecnológico
+- **Frontend/Backend:** [Streamlit](https://streamlit.io/ ) (Python-based Web Framework)
 - **Procesamiento de Documentos:** `python-docx`
-- **Cerebro de IA:** OpenAI API (Modelos GPT)
+- **Motor de IA:** OpenAI API (Modelos GPT-4o-mini)
+- **Seguridad:** Gestión de credenciales mediante Variables de Entorno y Secrets.
 
 ---
 
-## 🚀 Instalación y Uso Local
+## 🚀 Guía de Uso Rápido
 
-1. **Clonar el repositorio:**
-   ```bash
-   git clone https://github.com/TU_USUARIO/agente-apa7-biblioteca.git
-   cd agente-apa7-biblioteca
+### 1. Acceso a la Plataforma
+Accede a la URL pública de la aplicación (proporcionada por Streamlit Cloud).
+
+### 2. Carga de Documento
+Arrastra y suelta el archivo del alumno en formato `.docx`. El sistema identificará automáticamente las secciones de "Cuerpo del Texto" y "Referencias".
+
+### 3. Análisis y Descarga
+Haz clic en **"Iniciar Análisis Profesional"**. Tras unos segundos, podrás previsualizar el feedback en pantalla y descargar el reporte final en Word para enviarlo al alumno.
+
+---
+
+## 🛡️ Configuración de Seguridad (Para Desarrolladores)
+Para replicar este proyecto o desplegarlo en un nuevo entorno:
+1. Crea un archivo `.env` en la raíz con tu `OPENAI_API_KEY`.
+2. En **Streamlit Cloud**, configura la clave en `Settings > Secrets` usando el formato:
+   ```toml
+   OPENAI_API_KEY = "sk-proj-..."
+
