@@ -23,57 +23,111 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 
-# 1. CARGA DE CONFIGURACIÓN SEGURA
+# 1. CONFIGURACIÓN SEGURA
 load_dotenv()
 API_KEY = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 SUPABASE_URL = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY") or os.getenv("SUPABASE_KEY")
 
-# Inicializar Supabase
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Inicializar Supabase solo si las claves existen
+if SUPABASE_URL and SUPABASE_KEY:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+else:
+    st.error("❌ Error: Faltan las credenciales de Supabase en los Secrets.")
+    st.stop()
 
-# --- MOTOR DE CONOCIMIENTO (RAG) ---
+# --- FUNCIONES DE APOYO (DEFINIDAS ANTES DEL FLUJO) ---
+
+def extraer_secciones(file_bytes):
+    """Extrae y separa el cuerpo del texto de las referencias."""
+    doc = docx.Document(io.BytesIO(file_bytes))
+    cuerpo, refs = [], []
+    en_refs = False
+    marcas = ["referencias", "bibliografía", "lista de referencias", "obras citadas"]
+    for p in doc.paragraphs:
+        t = p.text.strip()
+        if not t: continue
+        if t.lower().replace(":", "") in marcas:
+            en_refs = True
+            continue
+        if en_refs: refs.append(t)
+        else: cuerpo.append(t)
+    return "\n".join(cuerpo), "\n".join(refs)
+
 @st.cache_resource
 def inicializar_conocimiento(ruta_pdf):
+    """Carga el PDF y crea el índice RAG."""
+    if not os.path.exists(ruta_pdf):
+        return None
     loader = PyPDFLoader(ruta_pdf)
     docs = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100).split_documents(loader.load())
     return FAISS.from_documents(docs, OpenAIEmbeddings(openai_api_key=API_KEY))
 
-# --- FUNCIÓN DE MEMORIA INSTITUCIONAL (SUPABASE) ---
-def guardar_en_memoria_institucional(nombre_archivo, feedback_texto):
-    """Extrae datos del feedback y los guarda en Supabase para analítica."""
+def analizar_con_rag(cuerpo, refs, vector_store):
+    """Analiza el trabajo usando el manual PDF como referencia."""
+    consulta = f"Reglas APA 7 para: {cuerpo[:300]}... {refs[:300]}"
+    docs_relevantes = vector_store.similarity_search(consulta, k=3) if vector_store else []
+    contexto = "\n\n".join([d.page_content for d in docs_relevantes])
+    
+    client = OpenAI(api_key=API_KEY)
+    prompt = (
+        "Eres un bibliotecario experto en APA 7. Genera un REPORTE DE FEEDBACK.\n"
+        "Usa el manual oficial proporcionado para justificar tus correcciones.\n"
+        "1. COHERENCIA: Citas vs Referencias.\n"
+        "2. FORMATO: Basado en el manual.\n"
+        "3. CORRECCIONES: Sé pedagógico."
+    )
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "system", "content": prompt},
+                  {"role": "user", "content": f"MANUAL:\n{contexto}\n\nTRABAJO:\n{cuerpo}\n\nREFS:\n{refs}"}]
+    )
+    return response.choices[0].message.content
+
+def guardar_en_supa(nombre, feedback):
+    """Guarda métricas en Supabase."""
     try:
-        # Lógica simple para extraer métricas del texto de la IA (puedes mejorarla con regex)
-        citas_huerfanas = 1 if "Cita huérfana" in feedback_texto else 0
-        refs_sobrantes = 1 if "Referencia sobrante" in feedback_texto else 0
-        
         data = {
-            "alumno": nombre_archivo,
-            "citas_huerfanas": citas_huerfanas,
-            "refs_sobrantes": refs_sobrantes,
-            "error_mas_comun": "Formato APA" if "sangría" in feedback_texto.lower() else "Coherencia",
-            "feedback_ia": feedback_texto[:500] # Guardamos solo un resumen
+            "alumno": nombre,
+            "citas_huerfanas": 1 if "huérfana" in feedback.lower() else 0,
+            "refs_sobrantes": 1 if "sobrante" in feedback.lower() else 0,
+            "error_mas_comun": "Formato" if "sangría" in feedback.lower() else "Coherencia"
         }
         supabase.table("revisiones_apa").insert(data).execute()
-        st.sidebar.info("📊 Datos guardados en la memoria institucional.")
+        st.sidebar.success("📊 Analítica guardada.")
     except Exception as e:
-        st.sidebar.error(f"⚠️ Error al guardar en Supabase: {e}")
+        st.sidebar.warning(f"⚠️ Error analítica: {e}")
 
-# --- INTERFAZ Y LÓGICA ---
-st.title("📚 Agente APA 7 con Memoria Institucional")
+# --- INTERFAZ STREAMLIT ---
+st.title("📚 Agente APA 7 - Biblioteca Profesional")
+st.sidebar.header("Estado")
 
-# (Aquí va el resto de tus funciones: extraer_secciones, analizar_con_rag...)
+vector_db = inicializar_conocimiento("manual_apa7.pdf")
+if vector_db: st.sidebar.success("✅ Manual APA 7 Activo")
 
-# --- DENTRO DEL BOTÓN DE ANÁLISIS ---
-if st.button("🚀 Iniciar Análisis Profesional"):
-    with st.spinner("Analizando y guardando en base de datos..."):
-        cuerpo, refs = extraer_secciones(archivo.read())
-        vector_db = inicializar_conocimiento("manual_apa7.pdf")
-        resultado = analizar_con_rag(cuerpo, refs, vector_db)
-        
-        # GUARDAR EN SUPABASE (FEEDBACK LOOP)
-        guardar_en_memoria_institucional(archivo.name, resultado)
-        
-        st.success("¡Análisis Finalizado!")
-        st.markdown(resultado)
-        # (Botón de descarga...)
+archivo = st.file_uploader("Sube el archivo .docx del alumno", type=["docx"])
+
+if archivo:
+    if st.button("🚀 Iniciar Análisis"):
+        with st.spinner("Procesando..."):
+            # 1. Extraer (Función ahora definida correctamente)
+            cuerpo, refs = extraer_secciones(archivo.read())
+            
+            # 2. Analizar
+            resultado = analizar_con_rag(cuerpo, refs, vector_db)
+            
+            # 3. Guardar en Supabase
+            guardar_en_supa(archivo.name, resultado)
+            
+            # 4. Mostrar y Descargar
+            st.success("¡Análisis completado!")
+            st.markdown(resultado)
+            
+            doc_out = docx.Document()
+            doc_out.add_heading(f"Reporte APA - {archivo.name}", 0)
+            for line in resultado.split('\n'): doc_out.add_paragraph(line)
+            buffer = io.BytesIO()
+            doc_out.save(buffer)
+            st.download_button("📥 Descargar Reporte Word", buffer.getvalue(), 
+                               file_name=f"Feedback_APA_{archivo.name}", 
+                               mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
