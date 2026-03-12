@@ -41,3 +41,9 @@ Para replicar este proyecto o desplegarlo en un nuevo entorno:
    ```toml
    OPENAI_API_KEY = "sk-proj-..."
 
+   ## Copyright
+
+© 2026 Michael González. All rights reserved.
+
+This software is protected by copyright law.
+Unauthorized reproduction or distribution is prohibited.

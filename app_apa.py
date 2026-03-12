@@ -1,3 +1,14 @@
+"""
+APA Validator AI
+Sistema de Validación de Citas y Referencias APA mediante Inteligencia Artificial
+
+Copyright (c) 2026 Michael González
+All rights reserved.
+
+Este software es propiedad de Michael González.
+Queda prohibida la reproducción, distribución, modificación
+o uso del código sin autorización expresa del autor.
+"""
 import streamlit as st
 import docx
 import io
