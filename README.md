@@ -1,45 +1,37 @@
-# 📚 Agente de Revisión APA 7 - Plataforma de Biblioteca
-> **Solución Inteligente para la Validación de Coherencia y Formato Académico.**
+# 📚 Agente de Revisión APA 7 - Ecosistema Inteligente de Biblioteca
+> **Plataforma Avanzada de Revisión Académica con IA, RAG y Analítica en Tiempo Real.**
 
-Esta plataforma automatiza la revisión bibliográfica en bibliotecas universitarias, utilizando Inteligencia Artificial (**OpenAI GPT-4o-mini**) para garantizar la integridad entre las citas en el texto y la lista de referencias, cumpliendo estrictamente con el **Manual APA 7ma Edición**.
+Este ecosistema automatiza la revisión bibliográfica en bibliotecas universitarias, integrando **Inteligencia Artificial de vanguardia** con una **Base de Conocimiento propia** y un sistema de **Memoria Institucional** para la toma de decisiones pedagógicas.
 
 ---
 
-## ✨ Características Principales
-- **🔍 Validación de Coherencia Cruzada:** Detecta automáticamente citas huérfanas (en texto pero no en referencias) y fuentes sobrantes (en referencias pero no citadas).
-- **📝 Análisis de Formato Estructural:** Revisa el uso de cursivas en títulos, aplicación de sangría francesa y el orden alfabético riguroso de la bibliografía.
-- **📥 Reportes Descargables:** Genera un archivo `.docx` con retroalimentación pedagógica detallada para el estudiante.
-- **🌐 Interfaz Web Moderna:** Desplegado en la nube para un acceso fácil desde cualquier navegador, sin necesidad de instalar software adicional.
+## 🚀 Capacidades de Nivel Profesional
+- **🔍 Validación de Coherencia Cruzada:** Motor lógico que detecta discrepancias exactas entre citas en el texto y la lista de referencias final.
+- **🧠 Motor RAG (LangChain + FAISS):** El agente consulta en tiempo real el **Manual Oficial de APA 7ma Edición (PDF)** antes de emitir cada corrección, garantizando respuestas con autoridad bibliotecaria.
+- **📊 Memoria Institucional (Supabase):** Registro automático de cada revisión en una base de datos PostgreSQL. Permite identificar los errores más comunes de los estudiantes para diseñar talleres de refuerzo.
+- **📝 Generación de Feedback Pedagógico:** Creación de reportes en formato `.docx` listos para descargar y entregar al alumno con sugerencias de mejora.
 
 ---
 
 ## 🛠️ Stack Tecnológico
-- **Frontend/Backend:** [Streamlit](https://streamlit.io/ ) (Python-based Web Framework)
-- **Procesamiento de Documentos:** `python-docx`
-- **Motor de IA:** OpenAI API (Modelos GPT-4o-mini)
-- **Seguridad:** Gestión de credenciales mediante Variables de Entorno y Secrets.
+- **Frontend/UI:** [Streamlit](https://streamlit.io/ ) (Framework Web de alto rendimiento para Python).
+- **Cerebro de IA:** OpenAI API (Modelos GPT-4o-mini).
+- **Orquestador RAG:** [LangChain](https://www.langchain.com/ ) para búsqueda semántica en documentos PDF.
+- **Base de Datos:** [Supabase](https://supabase.com/ ) (PostgreSQL) para analítica de errores.
+- **Procesamiento de Documentos:** `python-docx` y `pypdf`.
 
 ---
 
-## 🚀 Guía de Uso Rápido
+## ⚙️ Configuración de Seguridad y Despliegue
+Este proyecto está diseñado bajo estándares de **GitHub Ready** (seguridad total de credenciales).
 
-### 1. Acceso a la Plataforma
-Accede a la URL pública de la aplicación (proporcionada por Streamlit Cloud).
+### 1. Variables de Entorno (Local)
+Crea un archivo `.env` en la raíz con las siguientes claves:
+```env
+OPENAI_API_KEY=sk-proj-...
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_KEY=eyJ...tu-clave-anon-publica
 
-### 2. Carga de Documento
-Arrastra y suelta el archivo del alumno en formato `.docx`. El sistema identificará automáticamente las secciones de "Cuerpo del Texto" y "Referencias".
-
-### 3. Análisis y Descarga
-Haz clic en **"Iniciar Análisis Profesional"**. Tras unos segundos, podrás previsualizar el feedback en pantalla y descargar el reporte final en Word para enviarlo al alumno.
-
----
-
-## 🛡️ Configuración de Seguridad (Para Desarrolladores)
-Para replicar este proyecto o desplegarlo en un nuevo entorno:
-1. Crea un archivo `.env` en la raíz con tu `OPENAI_API_KEY`.
-2. En **Streamlit Cloud**, configura la clave en `Settings > Secrets` usando el formato:
-   ```toml
-   OPENAI_API_KEY = "sk-proj-..."
 
    ## Copyright
 
