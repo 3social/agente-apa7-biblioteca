@@ -25,7 +25,8 @@ class Settings:
         self.SUPABASE_KEY = self.SUPABASE_KEY or os.getenv("SUPABASE_KEY")
         
         # Ruta del manual
-        self.MANUAL_PDF_PATH = "manual_apa7.pdf"
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.MANUAL_PDF_PATH = os.path.join(base_dir, "manual_apa7.pdf")
 
 # Crear la instancia de configuración
 settings = Settings()
