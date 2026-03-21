@@ -91,6 +91,61 @@ class ResumenAnalisis(BaseModel):
         return v
 
 
+class TipoErrorEstilo(str, Enum):
+    sesgo_lenguaje        = "sesgo_lenguaje"
+    registro_informal     = "registro_informal"
+    primera_persona       = "primera_persona"
+    afirmacion_sin_respaldo = "afirmacion_sin_respaldo"
+    verbosidad            = "verbosidad"
+    voz_pasiva_excesiva   = "voz_pasiva_excesiva"
+    otro                  = "otro"
+
+
+class ErrorEstilo(BaseModel):
+    """Un problema de estilo académico APA 7 detectado por el LLM."""
+    tipo: TipoErrorEstilo = Field(
+        description=(
+            "Categoría del problema: sesgo_lenguaje, registro_informal, "
+            "primera_persona, afirmacion_sin_respaldo, verbosidad, "
+            "voz_pasiva_excesiva, otro."
+        )
+    )
+    severidad: Severidad = Field(
+        description="alta = viola norma APA 7 explícita; media = debilita el trabajo; baja = recomendación."
+    )
+    fragmento: str = Field(
+        description="Fragmento exacto del texto del alumno donde ocurre el problema."
+    )
+    capitulo_apa: str = Field(
+        description="Referencia al capítulo o sección APA 7. Ejemplo: 'APA 7, Capítulo 5.2'."
+    )
+    sugerencia: str = Field(
+        description="Cómo reescribir o corregir el fragmento. Tono pedagógico."
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "tipo":        self.tipo.value,
+            "severidad":   self.severidad.value,
+            "fragmento":   self.fragmento,
+            "capitulo_apa": self.capitulo_apa,
+            "sugerencia":  self.sugerencia,
+        }
+
+
+class AnalisisEstilo(BaseModel):
+    """Resultado completo del análisis de estilo académico APA 7."""
+    errores: List[ErrorEstilo] = Field(
+        description="Lista de problemas de estilo encontrados. Vacía si el texto cumple."
+    )
+    observacion_general: str = Field(
+        description=(
+            "Párrafo breve (2-3 oraciones) con la valoración general del estilo académico. "
+            "Tono constructivo, menciona fortalezas y áreas de mejora."
+        )
+    )
+
+
 class AnalisisAPA(BaseModel):
     """
     Resultado completo del análisis APA.
@@ -121,7 +176,7 @@ class AnalisisAPA(BaseModel):
     )
     resumen: ResumenAnalisis
 
-    # --- Campos reservados para módulos futuros (Fase 0.2 – 0.5) ---
-    errores_formato:   Optional[List[dict]] = Field(default=None, description="Reservado: document_formatter.py")
-    errores_gramatica: Optional[List[dict]] = Field(default=None, description="Reservado: grammar_checker.py")
+    # --- Campos de módulos opcionales ---
+    errores_formato:   Optional[List[dict]] = Field(default=None, description="document_formatter.py — Fase 0.3")
+    errores_estilo:    Optional[List[dict]] = Field(default=None, description="academic_style.py — Fase 0.4 (opcional)")
     coherencia:        Optional[dict]       = Field(default=None, description="Reservado: semantic_analyzer.py")

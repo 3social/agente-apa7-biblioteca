@@ -13,7 +13,6 @@ Esto reduce el costo de tokens y el ruido en el contexto del LLM.
 """
 
 import os
-import streamlit as st
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -61,17 +60,25 @@ _QUERIES_SECCION: dict[str, str] = {
 }
 
 
-@st.cache_resource
+# Caché en memoria: evita reconstruir el índice en cada request.
+# Clave: primeros 8 chars del api_key (no almacenar la key completa).
+_cache: dict[str, object] = {}
+
+
 def inicializar_conocimiento(ruta_pdf: str, api_key: str):
     """
-    Carga el PDF del Manual APA 7 completo y construye el índice vectorial.
+    Carga el PDF del Manual APA 7 y construye el índice vectorial FAISS.
 
-    Se ejecuta una sola vez por sesión gracias a st.cache_resource.
-    chunk_overlap=200 (vs 100 anterior) mejora la recuperación en
-    secciones limítrofes del manual (ej: transición cap.8 → cap.9).
+    Usa caché en memoria para no reconstruir el índice en cada request.
+    Compatible con Streamlit y con FastAPI (sin dependencias de st.*).
+    chunk_overlap=200 mejora la recuperación en secciones limítrofes.
     """
     if not os.path.exists(ruta_pdf):
         return None
+
+    cache_key = f"{ruta_pdf}:{api_key[:8]}"
+    if cache_key in _cache:
+        return _cache[cache_key]
 
     loader = PyPDFLoader(ruta_pdf)
     docs = RecursiveCharacterTextSplitter(
@@ -80,7 +87,10 @@ def inicializar_conocimiento(ruta_pdf: str, api_key: str):
     ).split_documents(loader.load())
 
     embeddings = OpenAIEmbeddings(openai_api_key=api_key)
-    return FAISS.from_documents(docs, embeddings)
+    vector_db = FAISS.from_documents(docs, embeddings)
+
+    _cache[cache_key] = vector_db
+    return vector_db
 
 
 def buscar_en_manual(vector_db, consulta: str, k: int = 3) -> str:

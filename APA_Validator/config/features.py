@@ -37,8 +37,9 @@ class FeatureFlags:
     validacion_formato: bool = False
 
     # ── Fase 0.4 ──────────────────────────────────────────────────────────────
-    # Revisión de gramática académica: vicios de lenguaje, concordancia, tono.
-    revision_gramatica: bool = False
+    # Estilo académico APA 7: lenguaje sin sesgo, registro formal, primera
+    # persona, afirmaciones sin respaldo, verbosidad. Opcional — default False.
+    estilo_academico: bool = False
 
     # ── Fase 0.5 ──────────────────────────────────────────────────────────────
     # Análisis semántico: coherencia argumental, consistencia temática.
@@ -64,7 +65,7 @@ _ENV_VARS: dict[str, str] = {
     "validacion_citas":    "FEATURE_VALIDACION_CITAS",
     "extractor_completo":  "FEATURE_EXTRACTOR_COMPLETO",
     "validacion_formato":  "FEATURE_VALIDACION_FORMATO",
-    "revision_gramatica":  "FEATURE_REVISION_GRAMATICA",
+    "estilo_academico":    "FEATURE_ESTILO_ACADEMICO",
     "analisis_semantico":  "FEATURE_ANALISIS_SEMANTICO",
 }
 
