@@ -14,10 +14,12 @@ import streamlit as st
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+from config.branding import cargar_branding
 from config.settings import settings
 from config.features import features
 from core.engine import EngineConfig, analizar_documento
 from modules.auth import SesionUsuario, cerrar_sesion, enviar_otp, validar_dominio, verificar_otp
+from modules.quota import verificar_cuota
 from modules.schemas import Severidad
 from rag.knowledge_base import inicializar_conocimiento
 from reports.report_generator import generar_reporte_docx
@@ -119,9 +121,20 @@ with st.sidebar:
     else:
         st.warning("⚠️ No se encontró manual_apa7.pdf")
 
-    st.markdown("---")
-    st.caption(f"**{sesion.university_name or 'Institución'}**")
+    # Branding institucional
+    branding = cargar_branding(sesion.university_id, settings.SUPABASE_URL, settings.SUPABASE_KEY)
+    if branding.logo_existe:
+        st.image(branding.logo_path, width=120)
+    st.markdown(f"**{branding.nombre}**")
     st.caption(f"_{sesion.email}_")
+
+    # Estado de cuota
+    if sesion.university_id and settings.SUPABASE_URL and settings.SUPABASE_SERVICE_KEY:
+        cuota = verificar_cuota(sesion.university_id, settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+        if cuota.limite:
+            st.progress(min(cuota.porcentaje, 1.0), text=f"{cuota.usados}/{cuota.limite} análisis este mes")
+        if cuota.aviso:
+            st.warning(cuota.mensaje)
 
     st.markdown("---")
     st.caption("**Módulos activos**")
@@ -143,6 +156,16 @@ st.markdown("### Automatización y Analítica Institucional")
 archivo = st.file_uploader("Sube el trabajo del alumno (.docx)", type=["docx"])
 
 if archivo:
+    # Verificar cuota antes de analizar
+    cuota = None
+    if sesion.university_id and settings.SUPABASE_URL and settings.SUPABASE_SERVICE_KEY:
+        cuota = verificar_cuota(sesion.university_id, settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+        if cuota.bloqueado:
+            st.error(cuota.mensaje)
+            st.stop()
+        elif cuota.aviso:
+            st.warning(cuota.mensaje)
+
     if st.button("🚀 Iniciar Análisis Profesional"):
         with st.spinner("El Agente está analizando y consultando el manual..."):
             try:
@@ -231,8 +254,12 @@ if archivo:
                             st.caption(f'Fragmento: "{es["fragmento"]}"')
                             st.info(f"Sugerencia: {es['sugerencia']}")
 
-                # Descarga del reporte Word
-                reporte_word = generar_reporte_docx(analisis.feedback_texto, archivo.name)
+                # Descarga del reporte Word con branding institucional
+                reporte_word = generar_reporte_docx(
+                    analisis.feedback_texto,
+                    archivo.name,
+                    branding=cargar_branding(sesion.university_id, settings.SUPABASE_URL, settings.SUPABASE_KEY),
+                )
                 st.download_button(
                     label="📥 Descargar Reporte para el Alumno",
                     data=reporte_word,

@@ -1,10 +1,6 @@
-# Agente de Revisión APA 7 - Ecosistema Modular de Biblioteca
-> **Plataforma Profesional de Revisión Académica con Arquitectura Modular, IA y RAG.**
-> En evolución activa hacia SaaS académico multi-institución.
-
-Este ecosistema automatiza la revisión bibliográfica en bibliotecas universitarias, integrando
-Inteligencia Artificial con una Base de Conocimiento propia y un sistema de Analítica Institucional,
-bajo una arquitectura modular escalable con feature flags para control de funcionalidades por etapa.
+# Agente de Revisión APA 7
+> **Plataforma SaaS académica para bibliotecas universitarias en Latinoamérica.**
+> Automatiza la revisión de trabajos académicos con IA, analítica institucional y arquitectura multitenant.
 
 ---
 
@@ -12,19 +8,34 @@ bajo una arquitectura modular escalable con feature flags para control de funcio
 
 ```
 APA_Validator/
-├── app.py                        # Orquestador principal (Streamlit)
+├── app.py                          # Interfaz Streamlit (cliente del Core Engine)
+├── core/
+│   └── engine.py                   # Orquestador central — sin dependencias de UI
+├── api/
+│   └── main.py                     # API REST FastAPI (POST /analyze · GET /health)
 ├── config/
-│   ├── settings.py               # API Keys y rutas (env / Streamlit Secrets)
-│   └── features.py               # Feature flags — control de módulos activos
+│   ├── settings.py                 # Variables de entorno (OpenAI, Supabase, branding)
+│   ├── features.py                 # Feature flags — activan módulos por institución
+│   └── branding.py                 # Identidad visual institucional (logo, colores)
 ├── modules/
-│   ├── schemas.py                # Contratos de datos (Pydantic): DocumentoAPA, AnalisisAPA
-│   ├── citation_extractor.py     # Extractor de secciones del .docx (básico y completo)
-│   ├── apa_validator.py          # Motor de análisis APA 7 con Structured Outputs
-│   └── analytics.py             # Conector Supabase — analítica institucional
+│   ├── schemas.py                  # Contratos Pydantic: DocumentoAPA, AnalisisAPA, ErrorEstilo
+│   ├── citation_extractor.py       # Extractor de secciones del .docx
+│   ├── apa_validator.py            # Análisis APA 7 con Structured Outputs (GPT-4o-mini)
+│   ├── document_formatter.py       # Validación de formato físico sin LLM (python-docx)
+│   ├── academic_style.py           # Estilo académico APA 7 (LLM — opcional)
+│   ├── analytics.py                # Escritura a Supabase (documents + apa_errors)
+│   ├── auth.py                     # Autenticación OTP por dominio universitario
+│   └── quota.py                    # Control de cuotas por plan (básico/profesional/institucional)
 ├── rag/
-│   └── knowledge_base.py        # RAG sobre Manual APA 7 con queries dirigidas por sección
-└── reports/
-    └── report_generator.py      # Generación de reportes Word para el alumno
+│   └── knowledge_base.py           # RAG sobre Manual APA 7 (LangChain + FAISS)
+├── reports/
+│   └── report_generator.py         # Reporte Word con branding institucional
+├── supabase/
+│   ├── 001_initial_schema.sql      # Esquema multitenant: universities, documents, apa_errors
+│   ├── 002_auth_hooks.sql          # JWT personalizado con university_id (RLS)
+│   └── 003_una_pilot.sql           # Datos de la universidad piloto (UNA Costa Rica)
+└── static/
+    └── logos/                      # Logos institucionales: <university_id>.png
 ```
 
 ---
@@ -32,79 +43,66 @@ APA_Validator/
 ## Flujo de Análisis
 
 ```
-.docx subido
+Usuario autenticado sube .docx
     │
     ▼
-citation_extractor.py
-  ├── Modo básico (default):   cuerpo + referencias
-  └── Modo completo (flag):    portada, abstract, cuerpo H1-H5,
-                               referencias, apéndices, tablas, figuras
+core/engine.py — analizar_documento()
     │
-    ▼
-knowledge_base.py (RAG)
-  └── Queries dirigidas por sección → recupera reglas APA 7 relevantes
-      Solo consulta secciones con contenido Y con flag activo
+    ├── citation_extractor.py   → Extrae secciones del documento
     │
-    ▼
-apa_validator.py (GPT-4o-mini · Structured Outputs)
-  └── Retorna AnalisisAPA (JSON tipado):
-      feedback_texto · errores[] · puntaje_apa · resumen
+    ├── knowledge_base.py       → RAG: recupera reglas APA 7 por sección (FAISS)
     │
-    ├── analytics.py → Supabase (datos estructurados, no keyword matching)
-    ├── app.py       → Streamlit (métricas, reporte, errores por severidad)
-    └── report_generator.py → Reporte Word descargable
+    ├── document_formatter.py   → Validación de formato físico sin LLM [flag opcional]
+    │      F01 Fuente · F02 Márgenes · F03 Interlineado
+    │      F04 Sangría · F05 Tamaño página · F06 Numeración
+    │
+    ├── apa_validator.py        → Análisis citas/referencias con GPT-4o-mini
+    │      Retorna AnalisisAPA: feedback · errores[] · puntaje · resumen
+    │
+    ├── academic_style.py       → Estilo académico APA 7 con LLM [flag opcional]
+    │      Sesgo · Registro informal · Primera persona · Afirmaciones sin respaldo
+    │
+    └── analytics.py            → Supabase: documents + apa_errors (service_role key)
+```
+
+---
+
+## Autenticación
+
+Flujo OTP por dominio universitario (sin contraseñas):
+
+```
+Email institucional ingresado
+    └── Validar dominio contra universities.authorized_domains
+          └── Supabase envía código 6 dígitos al email
+                └── Usuario ingresa código → sesión activa
+                      └── JWT contiene university_id → RLS activo automáticamente
 ```
 
 ---
 
 ## Feature Flags
 
-El sistema usa un mecanismo de feature flags para controlar qué módulos están activos
-sin tocar código ni hacer un nuevo deploy. Esto permite habilitar funcionalidades
-de forma gradual por ambiente o por institución.
+Activan módulos sin tocar código — configurables por institución desde `.env` o Streamlit Secrets.
 
 | Flag | Default | Descripción |
 |---|---|---|
 | `FEATURE_VALIDACION_CITAS` | `true` | Core — siempre activo |
 | `FEATURE_EXTRACTOR_COMPLETO` | `false` | Extractor de todas las secciones APA 7 |
-| `FEATURE_VALIDACION_FORMATO` | `false` | Validación de formato físico (fuente, márgenes, etc.) |
-| `FEATURE_REVISION_GRAMATICA` | `false` | Gramática académica (vicios, concordancia, tono) |
-| `FEATURE_ANALISIS_SEMANTICO` | `false` | Coherencia argumental del documento |
-
-**Configuración:** agregar la variable al archivo `.env` (local) o a Streamlit Secrets (nube).
-
-```
-FEATURE_EXTRACTOR_COMPLETO=true
-```
-
-El sidebar de la aplicación muestra en tiempo real qué módulos están activos.
+| `FEATURE_VALIDACION_FORMATO` | `false` | Formato físico: fuente, márgenes, interlineado, sangría |
+| `FEATURE_ESTILO_ACADEMICO` | `false` | Estilo APA 7: sesgo, registro, primera persona, verbosidad |
 
 ---
 
-## Características Implementadas
+## Planes y Cuotas
 
-**Análisis de citas y referencias**
-Detecta citas huérfanas (en texto sin referencia) y referencias sobrantes (en lista sin citar).
-Validación cruzada basada en las reglas del Manual APA 7.
+| Plan | Análisis / mes | Descripción |
+|---|---|---|
+| Básico | 100 | 1 biblioteca |
+| Profesional | 500 | Multi-facultad |
+| Institucional | Sin límite | Campus completo |
 
-**RAG con queries dirigidas por sección**
-El Manual APA 7 (PDF completo) está indexado con LangChain + FAISS.
-Cada sección del documento (portada, abstract, encabezados, tablas, referencias, apéndices)
-tiene su propia query optimizada. Solo se consultan las secciones presentes en el documento
-y con su feature flag activo — reduce costo de tokens y ruido en el contexto del LLM.
-
-**Output estructurado (Pydantic + Structured Outputs de OpenAI)**
-El LLM retorna siempre un objeto `AnalisisAPA` válido — nunca texto libre sin estructura.
-Esto garantiza datos consistentes en Supabase independientemente de cómo el modelo redacte.
-
-**Analítica institucional sin keyword matching**
-Los datos se extraen del objeto tipado `AnalisisAPA`, no del texto del feedback.
-Puntaje APA, errores críticos, errores menores y tipo más frecuente se persisten con precisión.
-
-**Extractor completo de secciones (flag: `FEATURE_EXTRACTOR_COMPLETO`)**
-Máquina de estados que recorre el documento linealmente:
-Portada → Abstract → Cuerpo (H1–H5) → Referencias → Apéndices
-con detección lateral de títulos de Tablas y Figuras.
+Aviso automático al llegar al 80% del límite. Bloqueo suave al 100%.
 
 ---
 
@@ -113,10 +111,12 @@ con detección lateral de títulos de Tablas y Figuras.
 | Capa | Tecnología |
 |---|---|
 | Frontend / UI | Streamlit |
+| API REST | FastAPI + Uvicorn |
 | IA — Análisis APA | OpenAI GPT-4o-mini (Structured Outputs) |
 | Contratos de datos | Pydantic v2 |
 | RAG — Conocimiento | LangChain + FAISS |
-| Base de Datos | Supabase (PostgreSQL) |
+| Base de datos | Supabase (PostgreSQL + RLS) |
+| Autenticación | Supabase Auth (OTP por dominio) |
 | Procesamiento .docx | python-docx |
 | Indexación PDF | PyPDFLoader (LangChain) |
 
@@ -129,36 +129,40 @@ con detección lateral de títulos de Tablas y Figuras.
 ```
 OPENAI_API_KEY=sk-...
 SUPABASE_URL=https://...supabase.co
-SUPABASE_KEY=eyJ...
+SUPABASE_KEY=eyJ...          # Anon key — auth OTP
+SUPABASE_SERVICE_KEY=eyJ...  # Service role key — inserts backend
+UNIVERSITY_ID=<uuid>         # UUID de la institución activa
 ```
 
-**Variables opcionales** (feature flags, todas en `false` por defecto):
+**Feature flags** (todas en `false` por defecto):
 
 ```
 FEATURE_EXTRACTOR_COMPLETO=false
 FEATURE_VALIDACION_FORMATO=false
-FEATURE_REVISION_GRAMATICA=false
-FEATURE_ANALISIS_SEMANTICO=false
+FEATURE_ESTILO_ACADEMICO=false
+```
+
+**Arrancar la API REST:**
+
+```bash
+cd APA_Validator
+uvicorn api.main:app --reload --port 8000
 ```
 
 ---
 
-## Roadmap
-
-Ver [ROADMAP.md](ROADMAP.md) para el plan completo de evolución hacia SaaS académico.
-
-**Estado actual:** Fase 0 (producto base) — en progreso.
+## Estado del Proyecto
 
 | Fase | Descripción | Estado |
 |---|---|---|
 | 0.1 | Output JSON estructurado del LLM | Completado |
 | 0.2 | Feature flags + RAG por sección + Extractor completo | Completado |
-| 0.3 | Validación de formato físico (`document_formatter.py`) | Pendiente |
-| 0.4 | Gramática académica (`grammar_checker.py`) | Pendiente |
-| 0.5 | Coherencia semántica (`semantic_analyzer.py`) | Pendiente |
-| 9 | Desacoplamiento — FastAPI core engine | Pendiente |
-| 10 | Infraestructura SaaS multitenant (Supabase) | Pendiente |
-| 11 | Piloto con universidad real | Pendiente |
+| 0.3 | Validación de formato físico (`document_formatter.py`) | Completado |
+| 0.4 | Estilo académico APA 7 (`academic_style.py`) | Completado |
+| 0.5 | Coherencia semántica | Descartado — no aplica para adelantos parciales |
+| 9 | Core Engine desacoplado + FastAPI | Completado |
+| 10 | Supabase multitenant: RLS + Auth OTP por dominio | Completado |
+| 11 | Piloto UNA Costa Rica: branding + cuotas | Completado |
 | 12 | Dashboard BI institucional | Pendiente |
 
 ---
@@ -166,6 +170,4 @@ Ver [ROADMAP.md](ROADMAP.md) para el plan completo de evolución hacia SaaS acad
 ## Copyright
 
 © 2026 Michael González. All rights reserved.
-
-This software is protected by copyright law.
-Unauthorized reproduction or distribution is prohibited.
+This software is protected by copyright law. Unauthorized reproduction or distribution is prohibited.
