@@ -57,13 +57,14 @@ def _pantalla_login() -> None:
                 return
 
             # 2. Enviar OTP
-            if enviar_otp(email, settings.SUPABASE_URL, settings.SUPABASE_KEY):
+            ok, error_msg = enviar_otp(email, settings.SUPABASE_URL, settings.SUPABASE_KEY)
+            if ok:
                 st.session_state["auth_etapa"]  = "otp"
                 st.session_state["auth_email"]  = email
                 st.session_state["auth_univ"]   = universidad
                 st.rerun()
             else:
-                st.error("No se pudo enviar el código. Intenta de nuevo.")
+                st.error(f"No se pudo enviar el código: {error_msg}")
 
     elif etapa == "otp":
         email     = st.session_state.get("auth_email", "")
@@ -72,7 +73,7 @@ def _pantalla_login() -> None:
         st.info(f"Código enviado a **{email}**. Revisa tu bandeja de entrada.")
 
         with st.form("form_otp"):
-            token = st.text_input("Código de verificación (6 dígitos)", max_chars=6)
+            token = st.text_input("Código de verificación", max_chars=8)
             verificar = st.form_submit_button("Ingresar")
 
         if verificar and token:

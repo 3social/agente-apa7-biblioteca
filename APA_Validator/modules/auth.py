@@ -67,19 +67,20 @@ def enviar_otp(
     email:        str,
     supabase_url: str,
     supabase_key: str,
-) -> bool:
+) -> tuple[bool, str]:
     """
     Envía un código OTP al email del usuario vía Supabase Auth.
 
     Returns:
-        True si el envío fue exitoso, False si hubo error.
+        (True, "") si el envío fue exitoso.
+        (False, mensaje_error) si hubo error.
     """
     try:
         client = _cliente_anon(supabase_url, supabase_key)
         client.auth.sign_in_with_otp({"email": email})
-        return True
-    except Exception:
-        return False
+        return True, ""
+    except Exception as e:
+        return False, str(e)
 
 
 def verificar_otp(

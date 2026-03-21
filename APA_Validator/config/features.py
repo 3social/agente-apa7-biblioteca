@@ -41,9 +41,6 @@ class FeatureFlags:
     # persona, afirmaciones sin respaldo, verbosidad. Opcional — default False.
     estilo_academico: bool = False
 
-    # ── Fase 0.5 ──────────────────────────────────────────────────────────────
-    # Análisis semántico: coherencia argumental, consistencia temática.
-    analisis_semantico: bool = False
 
     def activas(self) -> list[str]:
         """Retorna los nombres de las features actualmente habilitadas."""
@@ -66,7 +63,6 @@ _ENV_VARS: dict[str, str] = {
     "extractor_completo":  "FEATURE_EXTRACTOR_COMPLETO",
     "validacion_formato":  "FEATURE_VALIDACION_FORMATO",
     "estilo_academico":    "FEATURE_ESTILO_ACADEMICO",
-    "analisis_semantico":  "FEATURE_ANALISIS_SEMANTICO",
 }
 
 
