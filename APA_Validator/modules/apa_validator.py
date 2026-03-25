@@ -7,7 +7,7 @@ de OpenAI — garantiza schema válido en el 100% de los casos.
 """
 
 from openai import OpenAI, LengthFinishReasonError
-from .schemas import DocumentoAPA, AnalisisAPA
+from .schemas import DocumentoAPA, AnalisisAPA, LLMAnalisisAPA
 
 
 # Límites de caracteres por sección para controlar el consumo de tokens.
@@ -130,7 +130,7 @@ def analizar_trabajo(
                 {"role": "system", "content": _PROMPT_SISTEMA},
                 {"role": "user",   "content": prompt_usuario},
             ],
-            response_format=AnalisisAPA,
+            response_format=LLMAnalisisAPA,
             temperature=0.2,
         )
     except LengthFinishReasonError as e:
@@ -144,4 +144,10 @@ def analizar_trabajo(
     if resultado.refusal:
         raise ValueError(f"El modelo rechazó el análisis: {resultado.refusal}")
 
-    return resultado.parsed
+    llm: LLMAnalisisAPA = resultado.parsed
+    return AnalisisAPA(
+        feedback_texto=llm.feedback_texto,
+        errores=llm.errores,
+        puntaje_apa=llm.puntaje_apa,
+        resumen=llm.resumen,
+    )

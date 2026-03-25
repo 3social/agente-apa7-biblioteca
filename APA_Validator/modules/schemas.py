@@ -176,7 +176,27 @@ class AnalisisAPA(BaseModel):
     )
     resumen: ResumenAnalisis
 
-    # --- Campos de módulos opcionales ---
+    # --- Campos de módulos opcionales (rellenados por código, no por el LLM) ---
     errores_formato:   Optional[List[dict]] = Field(default=None, description="document_formatter.py — Fase 0.3")
     errores_estilo:    Optional[List[dict]] = Field(default=None, description="academic_style.py — Fase 0.4 (opcional)")
-    coherencia:        Optional[dict]       = Field(default=None, description="Reservado: semantic_analyzer.py")
+    coherencia:        Optional[dict]       = Field(default=None, description="Reservado")
+
+
+class LLMAnalisisAPA(BaseModel):
+    """
+    Schema reducido para la llamada a OpenAI Structured Outputs.
+    Solo incluye los campos que el LLM debe rellenar — sin dict ni Optional[dict]
+    que rompen la validación de additionalProperties de OpenAI.
+    Los campos opcionales (errores_formato, errores_estilo) los agrega el código
+    después de recibir la respuesta del LLM.
+    """
+    feedback_texto: str = Field(
+        description=(
+            "Reporte completo en formato Markdown para mostrar al alumno. "
+            "Secciones: ## Coherencia, ## Formato APA 7, ## Correcciones. "
+            "Tono pedagógico, claro y constructivo."
+        )
+    )
+    errores:    List[ErrorAPA]     = Field(description="Lista detallada de cada error APA encontrado.")
+    puntaje_apa: int               = Field(ge=0, le=100, description="Puntaje global APA 7 (0-100).")
+    resumen:    ResumenAnalisis
